@@ -34,6 +34,8 @@
 		<PnPCoreSdkPathNet8 Condition="'$(PnPCoreSdkPathNet8)' == ''"></PnPCoreSdkPathNet8>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyFile>..\pnp.core.snk</AssemblyOriginatorKeyFile>
+		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+		<RestoreLockedMode>true</RestoreLockedMode>	
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(IsWindows)'=='true'">
