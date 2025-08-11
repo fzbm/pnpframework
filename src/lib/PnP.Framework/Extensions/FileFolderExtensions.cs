@@ -292,7 +292,7 @@ namespace Microsoft.SharePoint.Client
             return documentSetFolder;
         }
         /// <summary>
-        /// Converts a folder with the given name as a child of the List RootFolder. 
+        /// Converts a folder with the given name as a child of the List RootFolder.
         /// </summary>
         /// <param name="list">List in which the folder exists</param>
         /// <param name="folderName">Folder name to convert</param>
@@ -310,7 +310,7 @@ namespace Microsoft.SharePoint.Client
         }
 
         /// <summary>
-        /// Converts a folder with the given name as a child of the List RootFolder. 
+        /// Converts a folder with the given name as a child of the List RootFolder.
         /// </summary>
         /// <param name="list">List in which the folder exists</param>
         /// <param name="folderName">Folder name to convert</param>
@@ -329,7 +329,7 @@ namespace Microsoft.SharePoint.Client
         }
 
         /// <summary>
-        /// Converts a folder with the given name as a child of the List RootFolder. 
+        /// Converts a folder with the given name as a child of the List RootFolder.
         /// </summary>
         /// <param name="list">List in which the folder exists</param>
         /// <param name="folder">Folder to convert</param>
@@ -345,7 +345,7 @@ namespace Microsoft.SharePoint.Client
         }
 
         /// <summary>
-        /// Converts a folder with the given name as a child of the List RootFolder. 
+        /// Converts a folder with the given name as a child of the List RootFolder.
         /// </summary>
         /// <param name="list">List in which the folder exists</param>
         /// <param name="folder">Folder to convert</param>
@@ -378,7 +378,7 @@ namespace Microsoft.SharePoint.Client
             if (listItem["ContentTypeId"].ToString().StartsWith(BuiltInContentTypeId.DocumentSet)) return folder;
             listItem["ContentTypeId"] = BuiltInContentTypeId.DocumentSet;
 
-            // Add missing properties            
+            // Add missing properties
             listItem["HTML_x0020_File_x0020_Type"] = "Sharepoint.DocumentSet";
             folder.Properties["docset_LastRefresh"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss");
             folder.Properties["vti_contenttypeorder"] = string.Join(",", list.ContentTypes.ToList().Where(c => c.StringId.StartsWith(BuiltInContentTypeId.Document + "00"))?.Select(c => c.StringId));
@@ -393,7 +393,7 @@ namespace Microsoft.SharePoint.Client
         }
 
         /// <summary>
-        /// Creates a folder with the given name as a child of the Web. 
+        /// Creates a folder with the given name as a child of the Web.
         /// Note it is more common to create folders within an existing Folder, such as the RootFolder of a List.
         /// </summary>
         /// <param name="web">Web to check for the named folder</param>
@@ -417,7 +417,7 @@ namespace Microsoft.SharePoint.Client
         }
 
         /// <summary>
-        /// Creates a folder with the given name as a child of the Web. 
+        /// Creates a folder with the given name as a child of the Web.
         /// Note it is more common to create folders within an existing Folder, such as the RootFolder of a List.
         /// </summary>
         /// <param name="web">Web to check for the named folder</param>
@@ -506,20 +506,21 @@ namespace Microsoft.SharePoint.Client
 
             if (parentFolder != null)
             {
-                parentFolder.EnsureProperty(p => p.Properties);
-                if (parentFolder.Properties.FieldValues.ContainsKey("vti_listname") && context != null)
+                PropertyValues properties = await parentFolder.EnsurePropertyAsync(p => p.Properties).ConfigureAwait(false);
+                if (context != null
+                    && properties.FieldValues.TryGetValue("vti_listname", out object rawListName)
+                    && Guid.TryParse(rawListName?.ToString(), out Guid parentListId))
                 {
-                    Guid parentListId = Guid.Parse((String)parentFolder.Properties.FieldValues["vti_listname"]);
                     parentList = context.Web.Lists.GetById(parentListId);
-                    context.Load(parentList, l => l.BaseType, l => l.Title);
-                    await context.ExecuteQueryRetryAsync();
+                    context.Load(parentList, l => l.BaseType);
+                    await context.ExecuteQueryRetryAsync().ConfigureAwait(false);
                 }
             }
 
-            if (parentList == null)
+            if (parentList == null || parentList.BaseType == BaseType.DocumentLibrary)
             {
                 // Create folder for library or common URL path
-                FolderCollectionAddParameters folderAddParameters = new FolderCollectionAddParameters
+                var folderAddParameters = new FolderCollectionAddParameters
                 {
                     Overwrite = true
                 };
@@ -527,7 +528,7 @@ namespace Microsoft.SharePoint.Client
                 ResourcePath resourcePath = ResourcePath.FromDecodedUrl(folderName);
 
                 var newFolder = folderCollection.AddUsingPath(resourcePath, folderAddParameters);
-                if (expressions != null && expressions.Any())
+                if (expressions != null && expressions.Length > 0)
                 {
                     folderCollection.Context.Load(newFolder, expressions);
                 }
@@ -535,15 +536,15 @@ namespace Microsoft.SharePoint.Client
                 {
                     folderCollection.Context.Load(newFolder);
                 }
-                await folderCollection.Context.ExecuteQueryRetryAsync();
+                await folderCollection.Context.ExecuteQueryRetryAsync().ConfigureAwait(false);
                 return newFolder;
             }
             else
             {
-                // Create folder for generic list                
-                parentFolder.EnsureProperty(f => f.ServerRelativePath);
+                // Create folder for generic list
+                await parentFolder.EnsurePropertyAsync(f => f.ServerRelativePath).ConfigureAwait(false);
 
-                ListItemCreationInformationUsingPath newFolderInfo = new ListItemCreationInformationUsingPath
+                var newFolderInfo = new ListItemCreationInformationUsingPath
                 {
                     LeafName = ResourcePath.FromDecodedUrl(folderName),
                     UnderlyingObjectType = FileSystemObjectType.Folder,
@@ -553,13 +554,13 @@ namespace Microsoft.SharePoint.Client
                 ListItem newFolderItem = parentList.AddItemUsingPath(newFolderInfo);
                 newFolderItem["Title"] = folderName;
                 newFolderItem.Update();
-                await context.ExecuteQueryRetryAsync();
+                await context.ExecuteQueryRetryAsync().ConfigureAwait(false);
 
                 // Get the newly created folder
-                var folderPath = parentFolder.ServerRelativePath.DecodedUrl.TrimEnd(new char[] { '/' }) + "/" + folderName;
+                var folderPath = parentFolder.ServerRelativePath.DecodedUrl.TrimEnd('/') + "/" + folderName;
                 var newFolder = context.Web.GetFolderByServerRelativePath(ResourcePath.FromDecodedUrl(folderPath));
                 // Ensure all properties are loaded (to be compatible with the previous implementation)
-                if (expressions != null && expressions.Any())
+                if (expressions != null && expressions.Length > 0)
                 {
                     context.Load(newFolder, expressions);
                 }
@@ -567,8 +568,8 @@ namespace Microsoft.SharePoint.Client
                 {
                     context.Load(newFolder);
                 }
-                await context.ExecuteQueryRetryAsync();
-                return (newFolder);
+                await context.ExecuteQueryRetryAsync().ConfigureAwait(false);
+                return newFolder;
             }
         }
 
@@ -949,7 +950,7 @@ namespace Microsoft.SharePoint.Client
                             newFolderItem["Title"] = folderName;
                             newFolderItem.Update();
                         }
-                        
+
                         containingList.Context.Load(newFolderItem);
                         await containingList.Context.ExecuteQueryRetryAsync();
 
