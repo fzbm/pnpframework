@@ -5,8 +5,6 @@
 		<IsPackable>false</IsPackable>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyFile>..\pnp.core.snk</AssemblyOriginatorKeyFile>
-		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-		<RestoreLockedMode>true</RestoreLockedMode>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -78,6 +76,7 @@
 		<None Remove="Resources\TestSolution.wsp" />
 		<None Remove="Resources\UpdateTermSet.csv" />
 		<None Remove="Resources\workflow.xaml" />
+		<None Remove="packages.lock.json" />
 	</ItemGroup>
 
 	<ItemGroup>
