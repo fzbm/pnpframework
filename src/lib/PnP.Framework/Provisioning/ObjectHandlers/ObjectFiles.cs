@@ -47,7 +47,7 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
 
                 var filesToProcess = template.Files.Union(directoryFiles).ToArray();
 
-                var siteAssetsFiles = filesToProcess.Where(f => f.Folder.ToLower().Contains("siteassets")).FirstOrDefault();
+                var siteAssetsFiles = filesToProcess.FirstOrDefault(f => f.Folder.IndexOf("siteassets", StringComparison.OrdinalIgnoreCase) > -1);
                 if (siteAssetsFiles != null)
                 {
                     // Need this so that we dont have access denied error during the first time upload, especially for modern sites
@@ -68,7 +68,7 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                     WriteSubProgress("File", targetFileName, currentFileIndex, filesToProcess.Length);
                     var folderName = parser.ParseString(file.Folder);
 
-                    if (folderName.ToLower().Contains("/_catalogs/"))
+                    if (folderName.IndexOf("/_catalogs/", StringComparison.OrdinalIgnoreCase) > -1)
                     {
                         // Edge case where you have files in the template which should be provisioned to the site collection
                         // master page gallery and not to a connected subsite
@@ -76,7 +76,7 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                         web.EnsureProperties(w => w.ServerRelativeUrl, w => w.Url);
                     }
 
-                    if (folderName.ToLower().StartsWith((web.ServerRelativeUrl.ToLower())))
+                    if (folderName.StartsWith(web.ServerRelativeUrl, StringComparison.OrdinalIgnoreCase))
                     {
                         folderName = folderName.Substring(web.ServerRelativeUrl.Length);
                     }
@@ -91,9 +91,11 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                     var folder = web.EnsureFolderPath(folderName);
 
                     folder.EnsureProperties(p => p.UniqueId, p => p.ServerRelativeUrl);
-                    parser.AddToken(new FileUniqueIdToken(web, folder.ServerRelativeUrl.Substring(web.ServerRelativeUrl.Length).TrimStart("/".ToCharArray()), folder.UniqueId));
-                    parser.AddToken(new FileUniqueIdEncodedToken(web, folder.ServerRelativeUrl.Substring(web.ServerRelativeUrl.Length).TrimStart("/".ToCharArray()), folder.UniqueId));
-                    
+
+                    string serverRelativeUrl = folder.ServerRelativeUrl.Substring(web.ServerRelativeUrl.Length).TrimStart('/');
+                    parser.AddToken(new FileUniqueIdToken(web, serverRelativeUrl, folder.UniqueId));
+                    parser.AddToken(new FileUniqueIdEncodedToken(web, serverRelativeUrl, folder.UniqueId));
+
                     var checkedOut = false;
 
                     var targetFile = folder.GetFile(template.Connector.GetFilenamePart(targetFileName));
@@ -139,6 +141,7 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                         targetFile.EnsureProperties(p => p.UniqueId, p => p.ServerRelativePath);
 
                         // Add ListItemId token, given that a file can live outside of a library ensure this does not break provisioning
+                        string targetFileServerRelativeUrl = targetFile.ServerRelativePath.DecodedUrl.Substring(web.ServerRelativeUrl.Length).TrimStart('/');
                         try
                         {
                             web.Context.Load(targetFile, p => p.ListItemAllFields.Id);
@@ -146,7 +149,7 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                             if (targetFile.ListItemAllFields.ServerObjectIsNull.HasValue
                                 && !targetFile.ListItemAllFields.ServerObjectIsNull.Value)
                             {
-                                parser.AddToken(new FileListItemIdToken(web, targetFile.ServerRelativePath.DecodedUrl.Substring(web.ServerRelativeUrl.Length).TrimStart("/".ToCharArray()), targetFile.ListItemAllFields.Id));
+                                parser.AddToken(new FileListItemIdToken(web, targetFileServerRelativeUrl, targetFile.ListItemAllFields.Id));
                             }
                         }
                         catch (ServerException ex)
@@ -159,8 +162,8 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                             }
                         }
 
-                        parser.AddToken(new FileUniqueIdToken(web, targetFile.ServerRelativePath.DecodedUrl.Substring(web.ServerRelativeUrl.Length).TrimStart("/".ToCharArray()), targetFile.UniqueId));
-                        parser.AddToken(new FileUniqueIdEncodedToken(web, targetFile.ServerRelativePath.DecodedUrl.Substring(web.ServerRelativeUrl.Length).TrimStart("/".ToCharArray()), targetFile.UniqueId));
+                        parser.AddToken(new FileUniqueIdToken(web, targetFileServerRelativeUrl, targetFile.UniqueId));
+                        parser.AddToken(new FileUniqueIdEncodedToken(web, targetFileServerRelativeUrl, targetFile.UniqueId));
 
                         bool webPartsNeedLocalization = false;
                         if (file.WebParts != null && file.WebParts.Any())
@@ -177,7 +180,7 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                                     var wpEntity = new WebPartEntity
                                     {
                                         WebPartTitle = parser.ParseString(webPart.Title),
-                                        WebPartXml = parser.ParseXmlString(webPart.Contents).Trim(new[] { '\n', ' ' }),
+                                        WebPartXml = parser.ParseXmlString(webPart.Contents).Trim('\n', ' '),
                                         WebPartZone = webPart.Zone,
                                         WebPartIndex = (int)webPart.Order
                                     };

@@ -513,14 +513,12 @@ namespace Microsoft.SharePoint.Client
                 {
                     parentList = context.Web.Lists.GetById(parentListId);
 
-                    context.Load(parentList, l => l.BaseType, l => l.RootFolder.Folders);
-                    context.Load(folderCollection);
-
+                    context.Load(parentList, l => l.Id);
                     await context.ExecuteQueryRetryAsync().ConfigureAwait(false);
                 }
             }
 
-            if (parentList == null || parentList.BaseType == BaseType.DocumentLibrary)
+            if (parentList == null)
             {
                 // Create folder for library or common URL path
                 var folderAddParameters = new FolderCollectionAddParameters
