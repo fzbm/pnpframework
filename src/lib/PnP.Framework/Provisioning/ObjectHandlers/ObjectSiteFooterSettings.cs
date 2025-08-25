@@ -44,17 +44,25 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                 {
                     // Get the Chrome options
                     var chrome = pnpCoreContext.Web.GetBrandingManager().GetChromeOptions();
-
-                    footer.Enabled = chrome.Footer.Enabled;
-                    // Avoid setting a null DisplayName, which causes errors if the footer was previously enabled.
-                    // This can happen when a user disables the footer after it was set.
-                    // Only update if DisplayName is present in the template.
-                    if (template.Footer.DisplayName != null)
+                    if (chrome.Footer is not null)
                     {
-                        chrome.Footer.DisplayName = template.Footer.DisplayName;
+                        footer.Enabled = chrome.Footer.Enabled;
+
+                        // Avoid setting a null DisplayName, which causes errors if the footer was previously enabled.
+                        // This can happen when a user disables the footer after it was set.
+                        // Only update if DisplayName is present in the template.
+                        if (chrome.Footer.DisplayName != null)
+                        {
+                            footer.DisplayName = chrome.Footer.DisplayName;
+                        }
+
+                        footer.Layout = (SiteFooterLayout)Enum.Parse(typeof(SiteFooterLayout), chrome.Footer.Layout.ToString());
+                        footer.BackgroundEmphasis = (Emphasis)Enum.Parse(typeof(Emphasis), chrome.Footer.Emphasis.ToString());
                     }
-                    footer.Layout = (PnP.Framework.Provisioning.Model.SiteFooterLayout)Enum.Parse(typeof(PnP.Framework.Provisioning.Model.SiteFooterLayout), chrome.Footer.Layout.ToString());
-                    footer.BackgroundEmphasis = (PnP.Framework.Provisioning.Model.Emphasis)Enum.Parse(typeof(PnP.Framework.Provisioning.Model.Emphasis), chrome.Footer.Emphasis.ToString());
+                    else
+                    {
+                        footer.Enabled = false;
+                    }
                 }
 
                 var structureString = web.ExecuteGetAsync($"/_api/navigation/MenuState?menuNodeKey='{Constants.SITEFOOTER_NODEKEY}'", defaultCulture.Name).GetAwaiter().GetResult();
@@ -252,13 +260,13 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                         web.Context.ExecuteQueryRetry();
                         ClientResult<Stream> stream = file.OpenBinaryStream();
                         web.Context.ExecuteQueryRetry();
-                        
+
                         file.EnsureProperty(f => f.ServerRelativePath);
                         var baseUri = new Uri(web.Url);
                         var fullUri = new Uri(baseUri, file.ServerRelativePath.DecodedUrl);
                         var folderPath = Uri.UnescapeDataString(fullUri.Segments.Take(fullUri.Segments.Length - 1).ToArray().Aggregate((i, x) => i + x).TrimEnd('/'));
 
-                        // Configure the filename to use 
+                        // Configure the filename to use
                         fileName = Uri.UnescapeDataString(fullUri.Segments[fullUri.Segments.Length - 1]);
 
                         // Build up a site relative container URL...might end up empty as well
@@ -377,7 +385,7 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                         chrome.Footer.Enabled = web.FooterEnabled;
                         chrome.Footer.DisplayName = template.Footer.DisplayName;
                         chrome.Footer.Layout = (PnP.Core.Model.SharePoint.FooterLayoutType)Enum.Parse(typeof(PnP.Core.Model.SharePoint.FooterLayoutType), template.Footer.Layout.ToString());
-                        chrome.Footer.Emphasis = (PnP.Core.Model.SharePoint.FooterVariantThemeType)Enum.Parse(typeof(PnP.Core.Model.SharePoint.FooterVariantThemeType), template.Footer.BackgroundEmphasis.ToString()); 
+                        chrome.Footer.Emphasis = (PnP.Core.Model.SharePoint.FooterVariantThemeType)Enum.Parse(typeof(PnP.Core.Model.SharePoint.FooterVariantThemeType), template.Footer.BackgroundEmphasis.ToString());
 
                         pnpCoreContext.Web.GetBrandingManager().SetChromeOptions(chrome);
                     }
@@ -489,7 +497,7 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                                             web.Context.ExecuteQueryRetry();
                                             newChildNode.LocalizeNavigationNode(web, childFooterLink.DisplayName, parser, scope);
                                         }
-                                    }                                    
+                                    }
                                 }
                             }
                         }
