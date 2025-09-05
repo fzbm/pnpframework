@@ -107,11 +107,10 @@ namespace Microsoft.SharePoint.Client
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
 #endif
 
-            var clientTag = string.Empty;
-            if (clientContext is PnPClientContext)
+            string clientTag = clientContext.ClientTag;
+            if (clientContext is PnPClientContext pnpClientContext)
             {
-                retryCount = (clientContext as PnPClientContext).RetryCount;
-                clientTag = (clientContext as PnPClientContext).ClientTag;
+                retryCount = pnpClientContext.RetryCount;
             }
 
             int backoffInterval = 500;
@@ -130,7 +129,7 @@ namespace Microsoft.SharePoint.Client
                 {
                     clientContext.ClientTag = SetClientTag(clientTag);
 
-                    // Make CSOM request more reliable by disabling the return value cache. Given we 
+                    // Make CSOM request more reliable by disabling the return value cache. Given we
                     // often clone context objects and the default value is
                     clientContext.DisableReturnValueCache = true;
                     // Add event handler to "insert" app decoration header to mark the PnP Sites Core library as a known application
@@ -255,7 +254,7 @@ namespace Microsoft.SharePoint.Client
                         {
                             if (response != null)
                             {
-                                //if(response.Headers["SPRequestGuid"] != null) 
+                                //if(response.Headers["SPRequestGuid"] != null)
                                 if (response.Headers.AllKeys.Any(k => string.Equals(k, "SPRequestGuid", StringComparison.InvariantCultureIgnoreCase)))
                                 {
                                     var spRequestGuid = response.Headers["SPRequestGuid"];
@@ -404,7 +403,7 @@ namespace Microsoft.SharePoint.Client
                         newClientContext = new ClientContext(newSiteUrl);
                         newClientContext.ExecutingWebRequest += (sender, webRequestEventArgs) =>
                         {
-                            // Call the ExecutingWebRequest delegate method from the original ClientContext object, but pass along the webRequestEventArgs of 
+                            // Call the ExecutingWebRequest delegate method from the original ClientContext object, but pass along the webRequestEventArgs of
                             // the new delegate method
                             MethodInfo methodInfo = clientContext.GetType().GetMethod("OnExecutingWebRequest", BindingFlags.Instance | BindingFlags.NonPublic);
                             object[] parametersArray = new object[] { webRequestEventArgs };
@@ -452,7 +451,7 @@ namespace Microsoft.SharePoint.Client
                     {
                         clonedClientContext.ExecutingWebRequest += delegate (object oSender, WebRequestEventArgs webRequestEventArgs)
                         {
-                            // Call the ExecutingWebRequest delegate method from the original ClientContext object, but pass along the webRequestEventArgs of 
+                            // Call the ExecutingWebRequest delegate method from the original ClientContext object, but pass along the webRequestEventArgs of
                             // the new delegate method
                             MethodInfo methodInfo = clientContext.GetType().GetMethod("OnExecutingWebRequest", BindingFlags.Instance | BindingFlags.NonPublic);
                             object[] parametersArray = new object[] { webRequestEventArgs };
@@ -509,7 +508,7 @@ namespace Microsoft.SharePoint.Client
                     // In case of app only or SAML
                     clonedClientContext.ExecutingWebRequest += (sender, webRequestEventArgs) =>
                     {
-                        // Call the ExecutingWebRequest delegate method from the original ClientContext object, but pass along the webRequestEventArgs of 
+                        // Call the ExecutingWebRequest delegate method from the original ClientContext object, but pass along the webRequestEventArgs of
                         // the new delegate method
                         MethodInfo methodInfo = clientContext.GetType().GetMethod("OnExecutingWebRequest", BindingFlags.Instance | BindingFlags.NonPublic);
                         object[] parametersArray = new object[] { webRequestEventArgs };
