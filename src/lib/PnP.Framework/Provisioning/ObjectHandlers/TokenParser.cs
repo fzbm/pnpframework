@@ -1368,7 +1368,18 @@ namespace PnP.Framework.Provisioning.ObjectHandlers
                 tokenIds.Add("parameter");
             }
 
-            var xml = template.ToXML();
+            string xml;
+
+            // Check if we have a connector and could retrieve the original XML file. This avoids serializing the template again.
+            if (template.Connector is not null
+                && template.Properties.TryGetValue("TemplateFileName", out string templateFileName))
+            {
+                xml = template.Connector.GetFile(templateFileName);
+            }
+            else
+            {
+                xml = template.ToXML();
+            }
 
             if (xml.IndexOfAny(TokenChars) == -1) return tokenIds;
 
